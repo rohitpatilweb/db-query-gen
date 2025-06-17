@@ -1,0 +1,8 @@
+Flask
+flask-cors
+psycopg2-binary
+requests
+langchain
+langchain-community
+langchain-core
+SQLAlchemy
