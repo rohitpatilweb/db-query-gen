@@ -61,7 +61,7 @@ function App() {
 
   useEffect(() => {
     axios
-      .get("http://localhost:5001/schema")
+      .get("https://db-query-gen.onrender.com/schema")
       .then(({ data }) => {
         const { tables, foreign_keys } = data;
 
@@ -125,7 +125,7 @@ function App() {
 
   const handleQuerySubmit = async () => {
     try {
-      const response = await axios.post("http://localhost:5001/generate-sql", {
+      const response = await axios.post("https://db-query-gen.onrender.com/generate-sql", {
         query,
       });
 
