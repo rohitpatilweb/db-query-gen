@@ -6,4 +6,4 @@ langchain
 langchain-community
 langchain-core
 SQLAlchemy
-langchain-google-genai`
+langchain-google-genai
