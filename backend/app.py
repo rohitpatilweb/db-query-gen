@@ -20,14 +20,14 @@ DB_PASSWORD = os.getenv("DB_PASSWORD", "npg_4hNJf3aEqbpS")
 DB_HOST = os.getenv("DB_HOST", "ep-rough-star-a5u6dls1-pooler.us-east-2.aws.neon.tech")
 DB_SSLMODE = os.getenv("DB_SSLMODE", "require")
 
-# Initialize database connection
-conn = psycopg2.connect(
-    dbname=DB_NAME,
-    user=DB_USER,
-    password=DB_PASSWORD,
-    host=DB_HOST,
-    sslmode=DB_SSLMODE,
-)
+# # Initialize database connection
+# conn = psycopg2.connect(
+#     dbname=DB_NAME,
+#     user=DB_USER,
+#     password=DB_PASSWORD,
+#     host=DB_HOST,
+#     sslmode=DB_SSLMODE,
+# )
 
 # Initialize SQLAlchemy engine
 DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}?sslmode={DB_SSLMODE}"
@@ -75,6 +75,13 @@ class QueryOutput(TypedDict):
 @app.route('/schema')
 def get_schema():
     """Fetch the database schema."""
+    conn = psycopg2.connect(
+        dbname=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        host=DB_HOST,
+        sslmode=DB_SSLMODE,
+    )
     cur = conn.cursor()
 
     cur.execute("""
@@ -102,6 +109,9 @@ def get_schema():
         WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = 'public';
     """)
     fkeys = cur.fetchall()
+
+    cur.close()
+    conn.close()
 
     tables = {}
     for table_name, column_name, data_type in columns:
@@ -152,15 +162,21 @@ def execute_sql(query: str):
     """Execute the generated SQL query."""
     print("Query:", query)
     try:
+        conn = psycopg2.connect(
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            host=DB_HOST,
+            sslmode=DB_SSLMODE,
+        )
         cur = conn.cursor()
         cur.execute(query)
         rows = cur.fetchall()
         cur.close()
+        conn.close()
         print("Rows:", rows)
-        # Return rows as a plain Python object
         return {'results': rows}
     except psycopg2.Error as e:
-        # Return error as a plain Python object
         print("Error executing query:", e)
         return {'error': str(e)}
 
