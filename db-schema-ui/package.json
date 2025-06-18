@@ -9,6 +9,7 @@
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.9.0",
     "dagre": "^0.8.5",
+    "gunicorn": "^0.0.1-security",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-flow-renderer": "^10.3.17",
