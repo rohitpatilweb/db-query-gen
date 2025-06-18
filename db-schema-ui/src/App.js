@@ -303,6 +303,8 @@ function App() {
               color: "#0f0",
               padding: "10px",
               borderRadius: "4px",
+              whiteSpace: "pre-wrap", // Ensures the text wraps to multiple lines
+              wordBreak: "break-word", // Breaks long words if necessary
             }}
           >
             {modalContent.sql}
