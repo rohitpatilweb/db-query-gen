@@ -214,6 +214,10 @@ def execute_sql(query: str):
         print("Error executing query:", e)
         return {'error': str(e)}
 
+@app.route("/health")
+def health_check():
+    return "OK", 200
+
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 2000))
