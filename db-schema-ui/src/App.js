@@ -3,6 +3,7 @@ import ReactFlow, { MiniMap, Controls, Background } from "react-flow-renderer";
 import axios from "axios";
 import dagre from "dagre";
 import Modal from "react-modal";
+import "./App.css";
 
 // Set the app element for accessibility (required for React Modal)
 Modal.setAppElement("#root");
@@ -43,7 +44,7 @@ const getLayoutedElements = (nodes, edges, direction = "LR") => {
         x: nodeWithPosition.x - nodeWidth / 2,
         y: nodeWithPosition.y - (node.style?.height || 50) / 2,
       };
-      node.draggable = true; 
+      node.draggable = true;
       return node;
     }),
     edges,
@@ -53,15 +54,21 @@ const getLayoutedElements = (nodes, edges, direction = "LR") => {
 function App() {
   const [query, setQuery] = useState("");
   const [modalIsOpen, setModalIsOpen] = useState(false);
-  const [modalContent, setModalContent] = useState({ sql: "", results: [] });
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const reactFlowWrapper = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
+  const [error, setError] = useState(""); // State to store error messages
+  const [modalContent, setModalContent] = useState({
+    sql: "SELECT * FROM table_name", // Default query
+    results: [],
+    columns: [],
+  });
+  const [editableQuery, setEditableQuery] = useState(modalContent.sql);
 
   useEffect(() => {
     axios
-      .get("https://db-query-gen.onrender.com/schema")
+      .get("http://localhost:2000/schema")
       .then(({ data }) => {
         const { tables, foreign_keys } = data;
 
@@ -91,7 +98,7 @@ function App() {
               padding: 5,
               border: "1px solid #222",
               borderRadius: 5,
-               backgroundColor: "#282c34",
+              backgroundColor: "#282c34",
               color: "#69fadb",
             },
           };
@@ -115,7 +122,11 @@ function App() {
         setEdges(layoutedEdges);
       })
       .catch(console.error);
-  }, []);
+
+    if (reactFlowInstance) {
+      reactFlowInstance.fitView({ padding: 0.2 }); // Adjust padding as needed
+    }
+  }, [reactFlowInstance]);
 
   useEffect(() => {
     if (reactFlowInstance) {
@@ -124,22 +135,56 @@ function App() {
   }, [nodes, edges, reactFlowInstance]);
 
   const handleQuerySubmit = async () => {
+    if (!query.trim()) {
+      setError("Query cannot be empty. Please enter a valid query.");
+      return;
+    }
+
     try {
-      const response = await axios.post("https://db-query-gen.onrender.com/generate-sql", {
+      setError(""); // Clear any previous errors
+      const response = await axios.post("http://localhost:2000/generate-sql", {
         query,
       });
 
       const { sql, query_result } = response.data;
 
-      // Open the modal and set the content
+      if (!sql || !query_result) {
+        throw new Error("Could not generate the query");
+      }
+
+      // Set modal content and sync editableQuery with the generated SQL
       setModalContent({
-        sql,
-        results: query_result.results,
+        sql: sql || "",
+        results: query_result?.results || [],
+        columns: query_result?.columns || [],
       });
+      setEditableQuery(sql || ""); // Sync editableQuery with the generated SQL
       setModalIsOpen(true);
     } catch (error) {
-      console.error(error);
-      alert("Failed to generate SQL");
+      console.error("Error generating SQL:", error);
+      setError("Failed to generate SQL. Please try again later.");
+    }
+  };
+
+  const handleExecuteQuery = async () => {
+    try {
+      // Call your API to execute the query
+      const response = await axios.post("http://localhost:2000/execute-query", {
+        query: editableQuery,
+      });
+
+      const { query_result } = response.data;
+
+      // Update modal content with new results
+      setModalContent({
+        ...modalContent,
+        sql: editableQuery,
+        results: query_result?.results || [],
+        columns: query_result?.columns || [],
+      });
+    } catch (error) {
+      console.error("Error executing query:", error);
+      alert("Failed to execute query. Please try again.");
     }
   };
 
@@ -170,7 +215,7 @@ function App() {
 
     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
       initialNodes,
-      initialEdges 
+      initialEdges
     );
 
     setNodes(layoutedNodes);
@@ -178,10 +223,37 @@ function App() {
   }, []);
 
   return (
-       <div style={{ display: "flex", height: "100vh", flexDirection: "column", backgroundColor: "#222", color: "#fff" }}>
+    <div
+      style={{
+        display: "flex",
+        height: "100vh",
+        flexDirection: "column",
+        backgroundColor: "#222",
+        color: "#fff",
+      }}
+    >
       {/* Query Input Section */}
-      <div style={{ padding: "16px", backgroundColor: "#333", borderBottom: "1px solid #444" }}>
-        <h2 style={{ color: "#61eada" }}>SQL Query Generator</h2>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center", // for vertical centering
+          padding: "24px",
+          backgroundColor: "#222",
+        }}
+      >
+        <h2
+          style={{
+            color: "#61eada",
+            fontSize: "1.8rem",
+            fontWeight: "bold",
+            textShadow: "2px 2px 4px rgba(0, 0, 0, 1)",
+            marginTop: "16px", 
+          }}
+        >
+          SQL Query Generator
+        </h2>
         <textarea
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -193,65 +265,67 @@ function App() {
             padding: "8px",
             fontSize: "16px",
             marginBottom: "16px",
-            backgroundColor: "#444", // Dark background for the textarea
-            color: "#fff", // Light text color
+            backgroundColor: "#181818",
+            color: "#fff",
             border: "1px solid #555", // Subtle border
             borderRadius: "4px", // Rounded corners
           }}
         />
-        <button
-          onClick={handleQuerySubmit}
-          style={{
-            backgroundColor: "#555", // Dark button background
-            color: "#fff", // Light text color
-            border: "none",
-            padding: "8px 16px",
-            fontSize: 16,
-            cursor: "pointer",
-            borderRadius: "4px", // Rounded corners
-          }}
-        >
+        <button onClick={handleQuerySubmit} className="submit-button">
           Submit
         </button>
       </div>
-    
+
       {/* React Flow Graph */}
-      <div style={{ flexGrow: 1, backgroundColor: "#222" }} ref={reactFlowWrapper}>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          zoomOnScroll={true}
-          panOnDrag={true}
-          zoomOnDoubleClick={true}
-          onLoad={setReactFlowInstance}
-          snapToGrid={true}
-          snapGrid={[15, 15]}
-          style={{
-            backgroundColor: "#222", // Dark background for the graph
-            color: "#fff", // Light text for nodes
-          }}
+      <div
+        style={{
+          display: "flex",
+          height: "100vh",
+          flexDirection: "column",
+          backgroundColor: "#222",
+          color: "#fff",
+        }}
+      >
+        <div
+          style={{ flexGrow: 1, backgroundColor: "#222" }}
+          ref={reactFlowWrapper}
         >
-          <MiniMap
-            nodeColor={() => "#555"} // Darker nodes in the minimap
-            nodeStrokeWidth={3}
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            zoomOnScroll={true}
+            panOnDrag={true}
+            zoomOnDoubleClick={true}
+            onLoad={setReactFlowInstance} // Set the ReactFlow instance
+            snapToGrid={true}
+            snapGrid={[15, 15]}
             style={{
-              backgroundColor: "#333", // Dark background for the minimap
+              backgroundColor: "#181818", // Dark background for the graph
+              color: "#fff", // Light text for nodes
             }}
-          />
-          <Controls
-            style={{
-              backgroundColor: "#444", // Darker controls background
-              color: "#fff", // Light text for controls
-            }}
-          />
-          <Background
-            color="#555" // Subtle grid lines
-            gap={16}
-            variant="dots" // Dotted grid
-          />
-        </ReactFlow>
+          >
+            <MiniMap
+              nodeColor={() => "#555"} // Darker nodes in the minimap
+              nodeStrokeWidth={3}
+              style={{
+                backgroundColor: "#333", // Dark background for the minimap
+              }}
+            />
+            <Controls
+              style={{
+                backgroundColor: "#fff", // Darker controls background
+                color: "#fff", // Light text for controls
+              }}
+            />
+            <Background
+              color="#000" // Subtle grid lines
+              gap={16}
+              variant="dots" // Dotted grid
+            />
+          </ReactFlow>
+        </div>
       </div>
-    
+
       {/* Modal for displaying results */}
       <Modal
         isOpen={modalIsOpen}
@@ -259,8 +333,8 @@ function App() {
         contentLabel="Query Results"
         style={{
           overlay: {
-            backgroundColor: "rgba(0, 0, 0, 0.85)", // Darker opaque background
-            zIndex: 1000, // Ensure the modal is above other elements
+            backgroundColor: "rgba(0, 0, 0, 0.85)",
+            zIndex: 1000,
           },
           content: {
             top: "50%",
@@ -272,47 +346,42 @@ function App() {
             width: "80%",
             maxHeight: "80%",
             overflow: "auto",
-            backgroundColor: "#333", // Dark background for the modal
-            color: "#fff", // Light text color
-            border: "1px solid #444", // Subtle border for the modal
-            borderRadius: "8px", // Rounded corners
-            zIndex: 1001, // Ensure content is above the overlay
+            backgroundColor: "#333",
+            color: "#fff",
+            border: "1px solid #444",
+            borderRadius: "8px",
+            zIndex: 1001,
           },
         }}
       >
         <h2 style={{ color: "#fff" }}>Query Results</h2>
-        <button
-          onClick={closeModal}
-          style={{
-            float: "right",
-            backgroundColor: "#555",
-            color: "#fff",
-            border: "none",
-            padding: "8px 16px",
-            cursor: "pointer",
-            borderRadius: "4px",
-          }}
-        >
+        <button onClick={closeModal} className="close-button">
           Close
         </button>
         <div>
-          <h3 style={{ color: "#fff" }}>Generated SQL:</h3>
-          <pre
+          <h3 style={{ color: "#fff" }}>Editable SQL Query:</h3>
+          <textarea
+            value={editableQuery}
+            onChange={(e) => setEditableQuery(e.target.value)}
+            rows="6"
             style={{
+              width: "100%",
+              padding: "10px",
+              fontSize: "16px",
               backgroundColor: "#222",
               color: "#0f0",
-              padding: "10px",
+              border: "1px solid #555",
               borderRadius: "4px",
-              whiteSpace: "pre-wrap", // Ensures the text wraps to multiple lines
-              wordBreak: "break-word", // Breaks long words if necessary
+              marginBottom: "16px",
             }}
-          >
-            {modalContent.sql}
-          </pre>
+          />
+          <button onClick={handleExecuteQuery} className="submit-button">
+            Execute
+          </button>
         </div>
         <div>
           <h3 style={{ color: "#fff" }}>Results:</h3>
-          {modalContent.results.length > 0 ? (
+          {modalContent.results && modalContent.results.length > 0 ? (
             <table
               border="1"
               style={{
@@ -324,7 +393,7 @@ function App() {
             >
               <thead>
                 <tr>
-                  {modalContent.results[0].map((_, index) => (
+                  {modalContent.columns.map((columnName, index) => (
                     <th
                       key={index}
                       style={{
@@ -333,7 +402,7 @@ function App() {
                         padding: "8px",
                       }}
                     >
-                      Column {index + 1}
+                      {columnName}
                     </th>
                   ))}
                 </tr>

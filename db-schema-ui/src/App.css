@@ -36,3 +36,39 @@
     transform: rotate(360deg);
   }
 }
+
+.submit-button {
+  background-color: #70e7d9bc;
+  color: #000000;
+  border: none;
+  padding: 8px 16px;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.3s ease; /* Smooth transition */
+}
+
+.submit-button:hover {
+  background-color: #72c8be; 
+  transform: scale(1.05); /* Slight zoom */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.close-button {
+  float: right;
+  background-color: #df4f45;
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.close-button:hover {
+  background-color: #c0392b; /* Darker red */
+  color: #f8f8f8; /* Slightly softer white */
+  transform: scale(1.05); /* Slight zoom */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* Shadow for depth */
+}

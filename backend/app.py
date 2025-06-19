@@ -150,13 +150,47 @@ def generate_sql():
         }
     )
     structured_llm = llm.with_structured_output(QueryOutput)
-    
     result = structured_llm.invoke(prompt)
-   
     query_result = execute_sql(result['query'])
+    columns = get_columns_via_cursor(result['query'])
+    query_result['columns'] = columns
 
     return jsonify({'sql':result['query'], 'query_result' : query_result})
 
+def get_columns_via_cursor(query: str):
+    try:
+        conn = psycopg2.connect(
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            host=DB_HOST,
+            sslmode=DB_SSLMODE,
+        )
+        cur = conn.cursor()
+        cur.execute(f"SELECT * FROM ({query}) AS sub LIMIT 0")
+        columns = [desc[0] for desc in cur.description]
+        print("Columns extracted:", columns)
+        cur.close()
+        conn.close()
+        return columns
+    except Exception as e:
+        print("Error:", e)
+        return []
+
+@app.route('/execute-query', methods=['POST'])
+def execute_sql():
+    data = request.json
+    query = data.get('query', '')
+    if not query:
+        return jsonify({'error': 'Query is required'}), 400
+    if not query.lower().startswith("select"):
+        return jsonify({'error': 'Only SELECT queries are allowed'}), 400
+
+    query_result = execute_sql(query)
+    columns = get_columns_via_cursor(query)
+    query_result['columns'] = columns
+
+    return jsonify({'query_result' : query_result})
 
 def execute_sql(query: str):
     """Execute the generated SQL query."""
@@ -182,5 +216,5 @@ def execute_sql(query: str):
 
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 2000))
     app.run(host="0.0.0.0", port=port)
