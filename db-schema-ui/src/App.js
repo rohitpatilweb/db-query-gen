@@ -68,7 +68,7 @@ function App() {
 
   useEffect(() => {
     axios
-      .get("http://localhost:2000/schema")
+      .get("https://db-query-gen.onrender.com/schema")
       .then(({ data }) => {
         const { tables, foreign_keys } = data;
 
@@ -142,7 +142,7 @@ function App() {
 
     try {
       setError(""); // Clear any previous errors
-      const response = await axios.post("http://localhost:2000/generate-sql", {
+      const response = await axios.post("https://db-query-gen.onrender.com/generate-sql", {
         query,
       });
 
@@ -169,7 +169,7 @@ function App() {
   const handleExecuteQuery = async () => {
     try {
       // Call your API to execute the query
-      const response = await axios.post("http://localhost:2000/execute-query", {
+      const response = await axios.post("https://db-query-gen.onrender.com/execute-query", {
         query: editableQuery,
       });
 
