@@ -58,13 +58,15 @@ function App() {
   const [edges, setEdges] = useState([]);
   const reactFlowWrapper = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
-  const [error, setError] = useState(""); // State to store error messages
+  const [error, setError] = useState("");
   const [modalContent, setModalContent] = useState({
-    sql: "SELECT * FROM table_name", // Default query
+    sql: "SELECT * FROM table_name",
     results: [],
     columns: [],
   });
   const [editableQuery, setEditableQuery] = useState(modalContent.sql);
+  const [selectedTable, setSelectedTable] = useState(null); // State for selected table
+  const [isModalOpen, setIsModalOpen] = useState(false); // State for modal visibility
 
   useEffect(() => {
     axios
@@ -134,6 +136,36 @@ function App() {
     }
   }, [nodes, edges, reactFlowInstance]);
 
+  const handleNodeClick = async (event, node) => {
+    setSelectedTable(node.id); // Set the selected table's label
+    setIsModalOpen(true); // Open the modal
+    const query = `SELECT * FROM ${node.id}`; // Example query to fetch data from the selected table
+    try {
+      const response = await axios.post(
+        "https://db-query-gen.onrender.com/execute-query",
+        {
+          query: query,
+        }
+      );
+
+      const { query_result } = response.data;
+
+      // Update modal content with the fetched data
+      setModalContent({
+        results: query_result?.results || [],
+        columns: query_result?.columns || [],
+      });
+    } catch (error) {
+      console.error("Error executing query:", error);
+      alert("Failed to execute query. Please try again.");
+    }
+  };
+
+  const closePopUpModal = () => {
+    setIsModalOpen(false); // Close the modal
+    setSelectedTable(null); // Clear the selected table
+    setModalContent({ results: [], columns: [] }); // Clear modal content
+  };
   const handleQuerySubmit = async () => {
     if (!query.trim()) {
       setError("Query cannot be empty. Please enter a valid query.");
@@ -142,9 +174,12 @@ function App() {
 
     try {
       setError(""); // Clear any previous errors
-      const response = await axios.post("https://db-query-gen.onrender.com/generate-sql", {
-        query,
-      });
+      const response = await axios.post(
+        "https://db-query-gen.onrender.com/generate-sql",
+        {
+          query,
+        }
+      );
 
       const { sql, query_result } = response.data;
 
@@ -169,9 +204,12 @@ function App() {
   const handleExecuteQuery = async () => {
     try {
       // Call your API to execute the query
-      const response = await axios.post("https://db-query-gen.onrender.com/execute-query", {
-        query: editableQuery,
-      });
+      const response = await axios.post(
+        "https://db-query-gen.onrender.com/execute-query",
+        {
+          query: editableQuery,
+        }
+      );
 
       const { query_result } = response.data;
 
@@ -249,7 +287,7 @@ function App() {
             fontSize: "1.8rem",
             fontWeight: "bold",
             textShadow: "2px 2px 4px rgba(0, 0, 0, 1)",
-            marginTop: "16px", 
+            marginTop: "16px",
           }}
         >
           SQL Query Generator
@@ -296,6 +334,7 @@ function App() {
             zoomOnScroll={true}
             panOnDrag={true}
             zoomOnDoubleClick={true}
+            onNodeClick={handleNodeClick}
             onLoad={setReactFlowInstance} // Set the ReactFlow instance
             snapToGrid={true}
             snapGrid={[15, 15]}
@@ -326,6 +365,98 @@ function App() {
         </div>
       </div>
 
+      {/* Popup Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onRequestClose={closePopUpModal}
+        contentLabel="Query Results"
+        style={{
+          overlay: {
+            backgroundColor: "rgba(0, 0, 0, 0.85)", // Dark overlay
+            zIndex: 1000,
+          },
+          content: {
+            top: "50%",
+            left: "50%",
+            right: "auto",
+            bottom: "auto",
+            marginRight: "-50%",
+            transform: "translate(-50%, -50%)",
+            width: "80%", // Fixed width
+            maxHeight: "80%", // Max height to allow scrolling
+            backgroundColor: "#333", // Match your theme
+            color: "#fff", // Light text
+            border: "1px solid #444",
+            borderRadius: "8px",
+            padding: "20px",
+            overflow: "auto", // Add scroll bar if content overflows
+          },
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between", // Space between the title and button
+            alignItems: "center", // Vertically align items
+            marginBottom: "16px", // Add spacing below the row
+          }}
+        >
+          <h3 style={{ color: "#61eada", margin: 0 }}>
+            Selected Table: {selectedTable}
+          </h3>
+          <button onClick={closePopUpModal} className="close-button">
+            Close
+          </button>
+        </div>
+        {modalContent.results && modalContent.results.length > 0 ? (
+          <table
+            border="1"
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              backgroundColor: "#444",
+              color: "#fff",
+            }}
+          >
+            <thead>
+              <tr>
+                {modalContent.columns.map((columnName, index) => (
+                  <th
+                    key={index}
+                    style={{
+                      backgroundColor: "#555",
+                      color: "#fff",
+                      padding: "8px",
+                    }}
+                  >
+                    {columnName}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {modalContent.results.map((row, rowIndex) => (
+                <tr key={rowIndex}>
+                  {row.map((cell, cellIndex) => (
+                    <td
+                      key={cellIndex}
+                      style={{
+                        padding: "8px",
+                        border: "1px solid #666",
+                      }}
+                    >
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p style={{ color: "#fff" }}>Loading Table Data ...</p>
+        )}
+      </Modal>
+
       {/* Modal for displaying results */}
       <Modal
         isOpen={modalIsOpen}
@@ -354,12 +485,21 @@ function App() {
           },
         }}
       >
-        <h2 style={{ color: "#fff" }}>Query Results</h2>
-        <button onClick={closeModal} className="close-button">
-          Close
-        </button>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between", // Space between the title and button
+            alignItems: "center", // Vertically align items
+            marginBottom: "16px", // Add spacing below the row
+          }}
+        >
+          <h2 style={{ color: "#72c8be" }}>Query Results</h2>
+          <button onClick={closeModal} className="close-button">
+            Close
+          </button>
+        </div>
         <div>
-          <h3 style={{ color: "#fff" }}>Editable SQL Query:</h3>
+          <h3 style={{ color: "#bbb" }}>Editable SQL Query:</h3>
           <textarea
             value={editableQuery}
             onChange={(e) => setEditableQuery(e.target.value)}
