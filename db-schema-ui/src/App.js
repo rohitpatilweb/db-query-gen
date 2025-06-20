@@ -309,9 +309,51 @@ function App() {
             borderRadius: "4px", // Rounded corners
           }}
         />
-        <button onClick={handleQuerySubmit} className="submit-button">
-          Submit
-        </button>
+
+          <div
+          style={{
+            display: "flex"
+          }}
+        >
+          {/* Message Strip */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              backgroundColor: "#333", // Dark background for the strip
+              color: "#fff", // Light text
+              padding: "6px 15px",
+              borderRadius: "4px", // Rounded corners
+              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)", 
+              marginRight: "16px", // Add spacing between the strip and the button
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                width: "24px",
+                height: "24px",
+                backgroundColor: "#51daca", // Light blue background for the icon
+                color: "#000", // Dark text for the icon
+                borderRadius: "50%", // Circular icon
+                fontWeight: "bold",
+                marginRight: "12px", // Spacing between icon and text
+              }}
+            >
+              i
+            </div>
+            <p style={{ margin: 0, fontSize: "14px", color: "#bbb" }}>
+              Click on a table to see its data.
+            </p>
+          </div>
+        
+          {/* Submit Button */}
+          <button onClick={handleQuerySubmit} className="submit-button">
+            Submit
+          </button>
+        </div>
       </div>
 
       {/* React Flow Graph */}
